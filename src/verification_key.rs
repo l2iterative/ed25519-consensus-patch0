@@ -223,12 +223,17 @@ impl VerificationKey {
     /// [ps]: https://zips.z.cash/protocol/protocol.pdf#concreteed25519
     /// [ZIP215]: https://github.com/zcash/zips/blob/master/zip-0215.rst
     pub fn verify(&self, signature: &Signature, msg: &[u8]) -> Result<(), Error> {
-        let k = Scalar::from_hash(
-            Sha512::default()
-                .chain(&signature.R_bytes[..])
-                .chain(&self.A_bytes.0[..])
-                .chain(msg),
-        );
+        let hash = Sha512::default()
+            .chain(&signature.R_bytes[..])
+            .chain(&self.A_bytes.0[..])
+            .chain(msg);
+
+        let k = {
+            let mut output = [0u8; 64];
+            output.copy_from_slice(hash.finalize().as_slice());
+            Scalar::from_bytes_mod_order_wide(&output)
+        };
+
         self.verify_prehashed(signature, k)
     }
 
@@ -237,7 +242,15 @@ impl VerificationKey {
     #[allow(non_snake_case)]
     pub(crate) fn verify_prehashed(&self, signature: &Signature, k: Scalar) -> Result<(), Error> {
         // `s_bytes` MUST represent an integer less than the prime `l`.
-        let s = Scalar::from_canonical_bytes(signature.s_bytes).ok_or(Error::InvalidSignature)?;
+        let s = {
+            let res = Scalar::from_canonical_bytes(signature.s_bytes);
+            if res.is_none().unwrap_u8() == 1 {
+                return Err(Error::InvalidSignature);
+            } else {
+                res.unwrap()
+            }
+        };
+
         // `R_bytes` MUST be an encoding of a point on the twisted Edwards form of Curve25519.
         let R = CompressedEdwardsY(signature.R_bytes)
             .decompress()

@@ -1,4 +1,5 @@
 use core::convert::TryFrom;
+use std::ops::Mul;
 
 use curve25519_dalek::{constants, scalar::Scalar};
 use rand_core::{CryptoRng, RngCore};
@@ -111,7 +112,7 @@ impl From<[u8; 32]> for SigningKey {
         };
 
         // Compute the public key as A = [s]B.
-        let A = &s * &constants::ED25519_BASEPOINT_TABLE;
+        let A = constants::ED25519_BASEPOINT_TABLE.mul(&s);
 
         SigningKey {
             seed,
@@ -158,18 +159,29 @@ impl SigningKey {
     /// Create a signature on `msg` using this key.
     #[allow(non_snake_case)]
     pub fn sign(&self, msg: &[u8]) -> Signature {
-        let r = Scalar::from_hash(Sha512::default().chain(&self.prefix[..]).chain(msg));
+        let r = {
+            let hash = Sha512::default().chain(&self.prefix[..]).chain(msg);
 
-        let R_bytes = (&r * &constants::ED25519_BASEPOINT_TABLE)
+            let mut output = [0u8; 64];
+            output.copy_from_slice(hash.finalize().as_slice());
+            Scalar::from_bytes_mod_order_wide(&output)
+        };
+
+        let R_bytes = constants::ED25519_BASEPOINT_TABLE
+            .mul(&r)
             .compress()
             .to_bytes();
 
-        let k = Scalar::from_hash(
-            Sha512::default()
+        let k = {
+            let hash = Sha512::default()
                 .chain(&R_bytes[..])
                 .chain(&self.vk.A_bytes.0[..])
-                .chain(msg),
-        );
+                .chain(msg);
+
+            let mut output = [0u8; 64];
+            output.copy_from_slice(hash.finalize().as_slice());
+            Scalar::from_bytes_mod_order_wide(&output)
+        };
 
         let s_bytes = (r + k * self.s).to_bytes();
 

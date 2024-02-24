@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/ed25519-consensus/2.1.0")]
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
+#![allow(deprecated)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "std")]
