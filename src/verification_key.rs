@@ -256,8 +256,6 @@ impl VerificationKey {
             .decompress()
             .ok_or(Error::InvalidSignature)?;
         // We checked the encoding of A_bytes when constructing `self`.
-
-        return Ok(());
         
         //       [8][s]B = [8]R + [8][k]A
         // <=>   [8]R = [8][s]B - [8][k]A
