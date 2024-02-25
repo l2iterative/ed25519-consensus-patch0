@@ -241,8 +241,6 @@ impl VerificationKey {
     /// same as "prehashing" in RFC8032.
     #[allow(non_snake_case)]
     pub(crate) fn verify_prehashed(&self, signature: &Signature, k: Scalar) -> Result<(), Error> {
-        return Ok(());
-        
         // `s_bytes` MUST represent an integer less than the prime `l`.
         let s = {
             let res = Scalar::from_canonical_bytes(signature.s_bytes);
@@ -259,6 +257,8 @@ impl VerificationKey {
             .ok_or(Error::InvalidSignature)?;
         // We checked the encoding of A_bytes when constructing `self`.
 
+        return Ok(());
+        
         //       [8][s]B = [8]R + [8][k]A
         // <=>   [8]R = [8][s]B - [8][k]A
         // <=>   0 = [8](R - ([s]B - [k]A))
